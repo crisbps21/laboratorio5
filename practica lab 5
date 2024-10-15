@@ -1,0 +1,102 @@
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split, KFold, LeaveOneOut
+from sklearn.metrics import accuracy_score
+from sklearn.neighbors import KNeighborsClassifier
+import matplotlib.pyplot as plt
+
+# Cargar los datasets
+# Puedes cambiar las rutas según tus archivos
+wine_data_url = 'https://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv'
+iris_data_url = 'https://archive.ics.uci.edu/ml/machine-learning-databases/iris/iris.data'
+
+# Cargar Wine Quality
+wine_df = pd.read_csv(wine_data_url, delimiter=';')
+X_wine = wine_df.drop(columns=['quality'])
+y_wine = wine_df['quality']
+
+# Cargar Iris Dataset
+iris_columns = ['sepal_length', 'sepal_width', 'petal_length', 'petal_width', 'class']
+iris_df = pd.read_csv(iris_data_url, names=iris_columns)
+X_iris = iris_df.drop(columns=['class'])
+y_iris = iris_df['class']
+
+# Clasificador básico para demostración
+knn = KNeighborsClassifier(n_neighbors=3)
+
+def hold_out_validation(X, y, test_size=0.3):
+    """Hold Out Validation"""
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
+    knn.fit(X_train, y_train)
+    y_pred = knn.predict(X_test)
+    accuracy = accuracy_score(y_test, y_pred)
+    return accuracy
+
+def k_fold_validation(X, y, k=5):
+    """K-Fold Cross Validation"""
+    kf = KFold(n_splits=k, shuffle=True, random_state=42)
+    accuracies = []
+    for train_index, test_index in kf.split(X):
+        X_train, X_test = X.iloc[train_index], X.iloc[test_index]
+        y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+        knn.fit(X_train, y_train)
+        y_pred = knn.predict(X_test)
+        accuracies.append(accuracy_score(y_test, y_pred))
+    return np.mean(accuracies)
+
+def leave_one_out_validation(X, y):
+    """Leave-One-Out Cross Validation"""
+    loo = LeaveOneOut()
+    accuracies = []
+    for train_index, test_index in loo.split(X):
+        X_train, X_test = X.iloc[train_index], X.iloc[test_index]
+        y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+        knn.fit(X_train, y_train)
+        y_pred = knn.predict(X_test)
+        accuracies.append(accuracy_score(y_test, y_pred))
+    return np.mean(accuracies)
+
+# Validaciones para el dataset Wine Quality
+wine_hold_out_acc = hold_out_validation(X_wine, y_wine, test_size=0.3)
+wine_kfold_acc = k_fold_validation(X_wine, y_wine, k=5)
+wine_loo_acc = leave_one_out_validation(X_wine, y_wine)
+
+# Validaciones para el dataset Iris
+iris_hold_out_acc = hold_out_validation(X_iris, y_iris, test_size=0.3)
+iris_kfold_acc = k_fold_validation(X_iris, y_iris, k=5)
+iris_loo_acc = leave_one_out_validation(X_iris, y_iris)
+
+# Resultados
+print(f"Wine Quality - Hold Out Accuracy: {wine_hold_out_acc}")
+print(f"Wine Quality - K-Fold Accuracy: {wine_kfold_acc}")
+print(f"Wine Quality - Leave-One-Out Accuracy: {wine_loo_acc}")
+
+print(f"Iris Dataset - Hold Out Accuracy: {iris_hold_out_acc}")
+print(f"Iris Dataset - K-Fold Accuracy: {iris_kfold_acc}")
+print(f"Iris Dataset - Leave-One-Out Accuracy: {iris_loo_acc}")
+
+# Gráficos para comparar los resultados
+labels = ['Hold Out', 'K-Fold', 'Leave-One-Out']
+wine_accuracies = [wine_hold_out_acc, wine_kfold_acc, wine_loo_acc]
+iris_accuracies = [iris_hold_out_acc, iris_kfold_acc, iris_loo_acc]
+
+x = np.arange(len(labels))  # el rango para las etiquetas
+width = 0.35  # el ancho de las barras
+
+fig, ax = plt.subplots()
+rects1 = ax.bar(x - width/2, wine_accuracies, width, label='Wine Quality')
+rects2 = ax.bar(x + width/2, iris_accuracies, width, label='Iris')
+
+# Añadir etiquetas, título y leyenda
+ax.set_xlabel('Métodos de Validación')
+ax.set_ylabel('Exactitud')
+ax.set_title('Comparación de métodos de validación')
+ax.set_xticks(x)
+ax.set_xticklabels(labels)
+ax.legend()
+
+# Mostrar gráfico
+plt.tight_layout()
+plt.show()
+
+
